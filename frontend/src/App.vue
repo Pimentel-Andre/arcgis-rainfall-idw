@@ -68,7 +68,7 @@ onMounted(start)
         <DaySelector
           :dates="dates"
           :model-value="date"
-          :disabled="loading || booting"
+          :disabled="loading || booting || !mode"
           @update:model-value="selectDate"
         />
         <MapView
@@ -92,7 +92,7 @@ onMounted(start)
           :params="params"
           :locked="mode === 'demo'"
           :loading="loading"
-          :disabled="booting"
+          :disabled="booting || !mode"
           @run-idw="runInterpolation"
         />
 

@@ -54,6 +54,9 @@ export function useInterpolation() {
   })
 
   async function runInterpolation(next = {}) {
+    // Sem fonte de dados (a carga falhou), não há o que calcular — e o erro
+    // que explica a falha não pode ser trocado por um erro técnico.
+    if (!source.value) return
     Object.assign(params, next)
     loading.value = true
     error.value = ''
@@ -67,7 +70,7 @@ export function useInterpolation() {
   }
 
   async function selectDate(novo) {
-    if (!novo || novo === date.value) return
+    if (!source.value || !novo || novo === date.value) return
     error.value = ''
     try {
       const dados = await source.value.getStations(novo)
@@ -108,7 +111,10 @@ export function useInterpolation() {
       dates.value = lista.dates
       await selectDate(lista.default)
     } catch (falha) {
-      error.value = `Não foi possível carregar os dados: ${falha.message}`
+      // Sem dados, o resto da tela fica desligado (mode continua null).
+      source.value = null
+      error.value = `Não foi possível carregar os dados do mapa (${falha.message}). `
+        + 'Tente recarregar a página em alguns minutos.'
     } finally {
       booting.value = false
     }
