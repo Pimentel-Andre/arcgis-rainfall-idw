@@ -1,0 +1,648 @@
+{
+  "generated_at": "2026-09-26T22:20:38+00:00",
+  "days": 243,
+  "residuals": 37691,
+  "method": "Validação cruzada leave-one-out em todos os dias; RMSE agregado dos resíduos de todas as estações. Resolução pela regra de Hengl (2006): célula de no máximo metade da distância média ao vizinho mais próximo.",
+  "grid": {
+    "power": [
+      0.5,
+      1.0,
+      1.5,
+      2.0,
+      2.5,
+      3.0,
+      3.5,
+      4.0
+    ],
+    "neighbors": [
+      4,
+      6,
+      8,
+      10,
+      12,
+      15,
+      20,
+      25,
+      30
+    ]
+  },
+  "table": [
+    {
+      "power": 0.5,
+      "neighbors": 4,
+      "rmse": 7.505,
+      "mae": 2.589,
+      "bias": 0.048
+    },
+    {
+      "power": 0.5,
+      "neighbors": 6,
+      "rmse": 7.408,
+      "mae": 2.609,
+      "bias": 0.004
+    },
+    {
+      "power": 0.5,
+      "neighbors": 8,
+      "rmse": 7.395,
+      "mae": 2.641,
+      "bias": -0.012
+    },
+    {
+      "power": 0.5,
+      "neighbors": 10,
+      "rmse": 7.424,
+      "mae": 2.688,
+      "bias": 0.014
+    },
+    {
+      "power": 0.5,
+      "neighbors": 12,
+      "rmse": 7.465,
+      "mae": 2.723,
+      "bias": 0.022
+    },
+    {
+      "power": 0.5,
+      "neighbors": 15,
+      "rmse": 7.516,
+      "mae": 2.768,
+      "bias": 0.021
+    },
+    {
+      "power": 0.5,
+      "neighbors": 20,
+      "rmse": 7.584,
+      "mae": 2.838,
+      "bias": 0.033
+    },
+    {
+      "power": 0.5,
+      "neighbors": 25,
+      "rmse": 7.639,
+      "mae": 2.887,
+      "bias": 0.051
+    },
+    {
+      "power": 0.5,
+      "neighbors": 30,
+      "rmse": 7.691,
+      "mae": 2.932,
+      "bias": 0.058
+    },
+    {
+      "power": 1.0,
+      "neighbors": 4,
+      "rmse": 7.52,
+      "mae": 2.563,
+      "bias": 0.027
+    },
+    {
+      "power": 1.0,
+      "neighbors": 6,
+      "rmse": 7.388,
+      "mae": 2.563,
+      "bias": -0.002
+    },
+    {
+      "power": 1.0,
+      "neighbors": 8,
+      "rmse": 7.343,
+      "mae": 2.578,
+      "bias": -0.008
+    },
+    {
+      "power": 1.0,
+      "neighbors": 10,
+      "rmse": 7.34,
+      "mae": 2.606,
+      "bias": 0.009
+    },
+    {
+      "power": 1.0,
+      "neighbors": 12,
+      "rmse": 7.352,
+      "mae": 2.626,
+      "bias": 0.015
+    },
+    {
+      "power": 1.0,
+      "neighbors": 15,
+      "rmse": 7.368,
+      "mae": 2.655,
+      "bias": 0.016
+    },
+    {
+      "power": 1.0,
+      "neighbors": 20,
+      "rmse": 7.39,
+      "mae": 2.697,
+      "bias": 0.026
+    },
+    {
+      "power": 1.0,
+      "neighbors": 25,
+      "rmse": 7.413,
+      "mae": 2.729,
+      "bias": 0.039
+    },
+    {
+      "power": 1.0,
+      "neighbors": 30,
+      "rmse": 7.437,
+      "mae": 2.759,
+      "bias": 0.047
+    },
+    {
+      "power": 1.5,
+      "neighbors": 4,
+      "rmse": 7.598,
+      "mae": 2.56,
+      "bias": 0.017
+    },
+    {
+      "power": 1.5,
+      "neighbors": 6,
+      "rmse": 7.447,
+      "mae": 2.542,
+      "bias": -0.004
+    },
+    {
+      "power": 1.5,
+      "neighbors": 8,
+      "rmse": 7.382,
+      "mae": 2.547,
+      "bias": -0.006
+    },
+    {
+      "power": 1.5,
+      "neighbors": 10,
+      "rmse": 7.355,
+      "mae": 2.558,
+      "bias": 0.006
+    },
+    {
+      "power": 1.5,
+      "neighbors": 12,
+      "rmse": 7.344,
+      "mae": 2.568,
+      "bias": 0.009
+    },
+    {
+      "power": 1.5,
+      "neighbors": 15,
+      "rmse": 7.332,
+      "mae": 2.581,
+      "bias": 0.011
+    },
+    {
+      "power": 1.5,
+      "neighbors": 20,
+      "rmse": 7.322,
+      "mae": 2.602,
+      "bias": 0.017
+    },
+    {
+      "power": 1.5,
+      "neighbors": 25,
+      "rmse": 7.319,
+      "mae": 2.619,
+      "bias": 0.025
+    },
+    {
+      "power": 1.5,
+      "neighbors": 30,
+      "rmse": 7.322,
+      "mae": 2.635,
+      "bias": 0.031
+    },
+    {
+      "power": 2.0,
+      "neighbors": 4,
+      "rmse": 7.71,
+      "mae": 2.57,
+      "bias": 0.011
+    },
+    {
+      "power": 2.0,
+      "neighbors": 6,
+      "rmse": 7.562,
+      "mae": 2.545,
+      "bias": -0.005
+    },
+    {
+      "power": 2.0,
+      "neighbors": 8,
+      "rmse": 7.491,
+      "mae": 2.541,
+      "bias": -0.004
+    },
+    {
+      "power": 2.0,
+      "neighbors": 10,
+      "rmse": 7.451,
+      "mae": 2.543,
+      "bias": 0.003
+    },
+    {
+      "power": 2.0,
+      "neighbors": 12,
+      "rmse": 7.429,
+      "mae": 2.545,
+      "bias": 0.005
+    },
+    {
+      "power": 2.0,
+      "neighbors": 15,
+      "rmse": 7.404,
+      "mae": 2.548,
+      "bias": 0.007
+    },
+    {
+      "power": 2.0,
+      "neighbors": 20,
+      "rmse": 7.377,
+      "mae": 2.556,
+      "bias": 0.01
+    },
+    {
+      "power": 2.0,
+      "neighbors": 25,
+      "rmse": 7.361,
+      "mae": 2.563,
+      "bias": 0.015
+    },
+    {
+      "power": 2.0,
+      "neighbors": 30,
+      "rmse": 7.352,
+      "mae": 2.571,
+      "bias": 0.018
+    },
+    {
+      "power": 2.5,
+      "neighbors": 4,
+      "rmse": 7.835,
+      "mae": 2.587,
+      "bias": 0.01
+    },
+    {
+      "power": 2.5,
+      "neighbors": 6,
+      "rmse": 7.701,
+      "mae": 2.561,
+      "bias": -0.004
+    },
+    {
+      "power": 2.5,
+      "neighbors": 8,
+      "rmse": 7.634,
+      "mae": 2.553,
+      "bias": -0.002
+    },
+    {
+      "power": 2.5,
+      "neighbors": 10,
+      "rmse": 7.593,
+      "mae": 2.551,
+      "bias": 0.002
+    },
+    {
+      "power": 2.5,
+      "neighbors": 12,
+      "rmse": 7.568,
+      "mae": 2.549,
+      "bias": 0.003
+    },
+    {
+      "power": 2.5,
+      "neighbors": 15,
+      "rmse": 7.542,
+      "mae": 2.548,
+      "bias": 0.005
+    },
+    {
+      "power": 2.5,
+      "neighbors": 20,
+      "rmse": 7.513,
+      "mae": 2.549,
+      "bias": 0.006
+    },
+    {
+      "power": 2.5,
+      "neighbors": 25,
+      "rmse": 7.494,
+      "mae": 2.55,
+      "bias": 0.009
+    },
+    {
+      "power": 2.5,
+      "neighbors": 30,
+      "rmse": 7.482,
+      "mae": 2.553,
+      "bias": 0.011
+    },
+    {
+      "power": 3.0,
+      "neighbors": 4,
+      "rmse": 7.959,
+      "mae": 2.608,
+      "bias": 0.011
+    },
+    {
+      "power": 3.0,
+      "neighbors": 6,
+      "rmse": 7.843,
+      "mae": 2.583,
+      "bias": -0.001
+    },
+    {
+      "power": 3.0,
+      "neighbors": 8,
+      "rmse": 7.783,
+      "mae": 2.575,
+      "bias": 0.001
+    },
+    {
+      "power": 3.0,
+      "neighbors": 10,
+      "rmse": 7.747,
+      "mae": 2.57,
+      "bias": 0.003
+    },
+    {
+      "power": 3.0,
+      "neighbors": 12,
+      "rmse": 7.724,
+      "mae": 2.568,
+      "bias": 0.003
+    },
+    {
+      "power": 3.0,
+      "neighbors": 15,
+      "rmse": 7.701,
+      "mae": 2.565,
+      "bias": 0.005
+    },
+    {
+      "power": 3.0,
+      "neighbors": 20,
+      "rmse": 7.677,
+      "mae": 2.563,
+      "bias": 0.005
+    },
+    {
+      "power": 3.0,
+      "neighbors": 25,
+      "rmse": 7.661,
+      "mae": 2.563,
+      "bias": 0.007
+    },
+    {
+      "power": 3.0,
+      "neighbors": 30,
+      "rmse": 7.65,
+      "mae": 2.563,
+      "bias": 0.008
+    },
+    {
+      "power": 3.5,
+      "neighbors": 4,
+      "rmse": 8.075,
+      "mae": 2.629,
+      "bias": 0.014
+    },
+    {
+      "power": 3.5,
+      "neighbors": 6,
+      "rmse": 7.976,
+      "mae": 2.608,
+      "bias": 0.004
+    },
+    {
+      "power": 3.5,
+      "neighbors": 8,
+      "rmse": 7.925,
+      "mae": 2.599,
+      "bias": 0.004
+    },
+    {
+      "power": 3.5,
+      "neighbors": 10,
+      "rmse": 7.893,
+      "mae": 2.594,
+      "bias": 0.005
+    },
+    {
+      "power": 3.5,
+      "neighbors": 12,
+      "rmse": 7.874,
+      "mae": 2.592,
+      "bias": 0.005
+    },
+    {
+      "power": 3.5,
+      "neighbors": 15,
+      "rmse": 7.855,
+      "mae": 2.589,
+      "bias": 0.006
+    },
+    {
+      "power": 3.5,
+      "neighbors": 20,
+      "rmse": 7.837,
+      "mae": 2.587,
+      "bias": 0.006
+    },
+    {
+      "power": 3.5,
+      "neighbors": 25,
+      "rmse": 7.825,
+      "mae": 2.586,
+      "bias": 0.007
+    },
+    {
+      "power": 3.5,
+      "neighbors": 30,
+      "rmse": 7.817,
+      "mae": 2.585,
+      "bias": 0.007
+    },
+    {
+      "power": 4.0,
+      "neighbors": 4,
+      "rmse": 8.18,
+      "mae": 2.651,
+      "bias": 0.017
+    },
+    {
+      "power": 4.0,
+      "neighbors": 6,
+      "rmse": 8.096,
+      "mae": 2.632,
+      "bias": 0.009
+    },
+    {
+      "power": 4.0,
+      "neighbors": 8,
+      "rmse": 8.052,
+      "mae": 2.624,
+      "bias": 0.009
+    },
+    {
+      "power": 4.0,
+      "neighbors": 10,
+      "rmse": 8.025,
+      "mae": 2.619,
+      "bias": 0.008
+    },
+    {
+      "power": 4.0,
+      "neighbors": 12,
+      "rmse": 8.01,
+      "mae": 2.616,
+      "bias": 0.008
+    },
+    {
+      "power": 4.0,
+      "neighbors": 15,
+      "rmse": 7.995,
+      "mae": 2.614,
+      "bias": 0.009
+    },
+    {
+      "power": 4.0,
+      "neighbors": 20,
+      "rmse": 7.982,
+      "mae": 2.612,
+      "bias": 0.008
+    },
+    {
+      "power": 4.0,
+      "neighbors": 25,
+      "rmse": 7.973,
+      "mae": 2.611,
+      "bias": 0.009
+    },
+    {
+      "power": 4.0,
+      "neighbors": 30,
+      "rmse": 7.967,
+      "mae": 2.61,
+      "bias": 0.009
+    }
+  ],
+  "chosen": {
+    "power": 1.5,
+    "neighbors": 25,
+    "cell_size": 3000,
+    "rmse": 7.319,
+    "mae": 2.619,
+    "bias": 0.025,
+    "skill_vs_mean": 0.306
+  },
+  "classic": {
+    "power": 2.0,
+    "neighbors": 12,
+    "rmse": 7.429,
+    "mae": 2.545,
+    "bias": 0.005
+  },
+  "baseline": {
+    "name": "média das demais estações do dia",
+    "rmse": 8.788,
+    "mae": 3.644,
+    "bias": -0.0
+  },
+  "resolution": {
+    "area_km2": 43705,
+    "median_stations_per_day": 147.0,
+    "mean_nearest_neighbor_m": 6910,
+    "max_cell_m": 3455,
+    "random_pattern_cell_m": 4311,
+    "clark_evans_r": 0.8,
+    "chosen_cell_m": 3000
+  },
+  "stability_by_month": [
+    {
+      "month": "2026-01",
+      "best_power": 1.5,
+      "best_neighbors": 25,
+      "best_rmse": 11.081,
+      "chosen_rmse": 11.081,
+      "penalty_pct": 0.0,
+      "baseline_rmse": 12.996
+    },
+    {
+      "month": "2026-02",
+      "best_power": 1.0,
+      "best_neighbors": 10,
+      "best_rmse": 14.02,
+      "chosen_rmse": 14.031,
+      "penalty_pct": 0.07,
+      "baseline_rmse": 16.495
+    },
+    {
+      "month": "2026-03",
+      "best_power": 2.5,
+      "best_neighbors": 30,
+      "best_rmse": 6.844,
+      "chosen_rmse": 6.999,
+      "penalty_pct": 2.28,
+      "baseline_rmse": 9.003
+    },
+    {
+      "month": "2026-04",
+      "best_power": 1.5,
+      "best_neighbors": 20,
+      "best_rmse": 4.204,
+      "chosen_rmse": 4.214,
+      "penalty_pct": 0.24,
+      "baseline_rmse": 5.276
+    },
+    {
+      "month": "2026-05",
+      "best_power": 1.5,
+      "best_neighbors": 30,
+      "best_rmse": 4.001,
+      "chosen_rmse": 4.012,
+      "penalty_pct": 0.27,
+      "baseline_rmse": 4.98
+    },
+    {
+      "month": "2026-06",
+      "best_power": 1.5,
+      "best_neighbors": 30,
+      "best_rmse": 5.339,
+      "chosen_rmse": 5.34,
+      "penalty_pct": 0.01,
+      "baseline_rmse": 6.482
+    },
+    {
+      "month": "2026-07",
+      "best_power": 1.5,
+      "best_neighbors": 30,
+      "best_rmse": 3.821,
+      "chosen_rmse": 3.821,
+      "penalty_pct": 0.02,
+      "baseline_rmse": 4.054
+    },
+    {
+      "month": "2026-08",
+      "best_power": 1.5,
+      "best_neighbors": 10,
+      "best_rmse": 4.418,
+      "chosen_rmse": 4.466,
+      "penalty_pct": 1.09,
+      "baseline_rmse": 5.984
+    }
+  ],
+  "references": [
+    "Shepard, D. (1968). A two-dimensional interpolation function for irregularly-spaced data. Proceedings of the 23rd ACM National Conference, 517–524.",
+    "Clark, P. J.; Evans, F. C. (1954). Distance to nearest neighbor as a measure of spatial relationships in populations. Ecology, 35(4), 445–453.",
+    "Hengl, T. (2006). Finding the right pixel size. Computers & Geosciences, 32(9), 1283–1298. doi:10.1016/j.cageo.2005.11.008",
+    "Chen, F.-W.; Liu, C.-W. (2012). Estimation of the spatial rainfall distribution using inverse distance weighting (IDW) in the middle of Taiwan. Paddy and Water Environment, 10, 209–222. doi:10.1007/s10333-012-0319-1",
+    "Li, J.; Heap, A. D. (2014). Spatial interpolation methods applied in the environmental sciences: A review. Environmental Modelling & Software, 53, 173–189.",
+    "Esri. How inverse distance weighted interpolation works. ArcGIS Pro documentation."
+  ]
+}
