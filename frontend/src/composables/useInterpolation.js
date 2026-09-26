@@ -62,8 +62,9 @@ export function useInterpolation() {
       } else {
         source.value = await createDemoSource()
         if (saude) {
-          notice.value = 'A API local respondeu, mas sem ArcPy '
-            + `(${saude.engine.detail}). Mostrando os cenários pré-processados.`
+          notice.value = `A API local está no ar, mas sem ArcPy (${saude.engine.detail}). `
+            + 'Com o ArcGIS Pro aberto e logado, reinicie a API para processar ao vivo. '
+            + 'Enquanto isso, o mapa mostra os cenários pré-processados.'
         }
       }
       const dados = await source.value.getStations()

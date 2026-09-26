@@ -49,6 +49,7 @@ setLocale('pt-BR')
 const mapRef = ref(null)
 const homeRef = ref(null)
 const view = shallowRef(null)
+const stationsReady = ref(false)
 
 // A superfície é uma imagem ancorada pela extensão. O ArcPy já a entrega em
 // Web Mercator, o mesmo sistema do basemap, então ela cai no lugar sem
@@ -71,6 +72,8 @@ function createBasemap() {
     ],
   })
 }
+
+const NUMBER_FORMAT = { places: 1, digitSeparator: true }
 
 const STATION_FIELDS = [
   { name: 'oid', type: 'oid' },
@@ -139,10 +142,11 @@ function createStationsLayer(rows, legend) {
       title: '{name} — {municipality}',
       content: [{
         type: 'fields',
+        // Campo numérico formatado exige places E digitSeparator juntos.
         fieldInfos: [
-          { fieldName: 'precip_mm', label: 'Chuva observada em 24 h (mm)', format: { places: 1 } },
-          { fieldName: 'estimated', label: 'Estimada pelo IDW sem esta estação (mm)', format: { places: 1 } },
-          { fieldName: 'error', label: 'Erro da estimativa (mm)', format: { places: 1 } },
+          { fieldName: 'precip_mm', label: 'Chuva observada em 24 h (mm)', format: NUMBER_FORMAT },
+          { fieldName: 'estimated', label: 'Estimada pelo IDW sem esta estação (mm)', format: NUMBER_FORMAT },
+          { fieldName: 'error', label: 'Erro da estimativa (mm)', format: NUMBER_FORMAT },
           { fieldName: 'station_id', label: 'Código CEMADEN' },
         ],
       }],
@@ -154,7 +158,7 @@ function createStationsLayer(rows, legend) {
 watch([view, () => props.result], ([v, result]) => {
   if (!v || !result) return
   const e = result.image_extent
-  surfaceLayer.source = new ImageElement({
+  const imagem = new ImageElement({
     image: result.urls.png,
     georeference: new ExtentAndRotationGeoreference({
       extent: {
@@ -163,6 +167,10 @@ watch([view, () => props.result], ([v, result]) => {
       },
     }),
   })
+  // Depois que a camada carrega, a fonte não pode ser trocada inteira: o
+  // SDK 5 recusa. Troca-se o que está dentro dela.
+  surfaceLayer.source.elements.removeAll()
+  surfaceLayer.source.elements.add(imagem)
 })
 
 // Limite do estado: criado uma vez, e usado para enquadrar o mapa.
@@ -199,6 +207,7 @@ watch([view, () => props.stations, () => props.legend], async ([v, rows, legend]
     stationsLayer.visible = props.showStations
     v.map.add(stationsLayer)
     stationsView = await v.whenLayerView(stationsLayer)
+    stationsReady.value = true
     return
   }
   await stationsLayer.when()
@@ -213,11 +222,12 @@ watch(() => props.showBoundary, (visivel) => { if (boundaryLayer) boundaryLayer.
 watch(() => props.showStations, (visivel) => { if (stationsLayer) stationsLayer.visible = visivel })
 
 // Estação escolhida (no mapa ou na tabela): realça e, se veio da tabela,
-// leva o mapa até ela e abre o popup.
-watch([() => props.selectedStationId, view], async ([id, v]) => {
+// leva o mapa até ela e abre o popup. `stationsReady` entra na lista para a
+// escolha feita antes de a camada carregar não se perder.
+watch([() => props.selectedStationId, view, stationsReady], async ([id, v, pronta]) => {
   highlight?.remove()
   highlight = null
-  if (!id || !v || !stationsLayer) return
+  if (!id || !v || !pronta) return
   const oid = props.stations.findIndex((s) => s.station_id === id) + 1
   if (!oid) return
   highlight = stationsView?.highlight(oid) ?? null
