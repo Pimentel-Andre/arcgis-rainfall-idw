@@ -1,0 +1,4 @@
+# Instale no CLONE do ambiente do ArcGIS Pro (ver README). O arcpy, o numpy,
+# o pillow e o pydantic já vêm no arcgispro-py3; falta só o servidor web.
+fastapi>=0.115
+uvicorn>=0.30

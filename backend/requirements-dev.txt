@@ -1,0 +1,8 @@
+# Para rodar os testes fora do ArcGIS Pro (no CI, por exemplo): repõe o que o
+# arcgispro-py3 já traz. Os testes que exigem ArcPy são pulados sozinhos.
+-r requirements.txt
+numpy
+pillow
+pydantic>=2
+httpx
+pytest
