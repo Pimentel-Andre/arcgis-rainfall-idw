@@ -1,18 +1,40 @@
 import pytest
 
-from app import config
-from app.services.stations import dataset_info, load_stations
+from app.services.stations import (
+    DateNotAvailable, available_dates, dataset_info, load_stations,
+    stations_for_date, write_event_csv,
+)
 
 CABECALHO = "station_id,longitude,latitude,precip_mm\n"
 
 
-def test_csv_de_exemplo():
-    estacoes = load_stations(config.STATIONS_CSV)
+def test_arquivo_cobre_janeiro_a_agosto():
+    dias = available_dates()
+    assert len(dias) == 243
+    assert dias[0]["date"] == "2026-01-01"
+    assert dias[-1]["date"] == "2026-08-31"
+
+
+def test_dia_mais_chuvoso_do_arquivo():
+    dias = available_dates()
+    mais_chuvoso = max(dias, key=lambda d: d["mean"])
+    assert mais_chuvoso == {"date": "2026-01-20", "station_count": 143, "mean": 47.5, "max": 182.8}
+
+
+def test_dia_vira_csv_de_evento_valido(tmp_path):
+    linhas = stations_for_date("2026-01-20")
+    caminho = write_event_csv(linhas, tmp_path / "estacoes.csv")
+    estacoes = load_stations(caminho)
     info = dataset_info(estacoes)
     assert len(estacoes) == 143
     assert info["date"] == "2026-01-20"
     assert info["source"] == "CEMADEN"
     assert info["observed_max"] == 182.8
+
+
+def test_dia_fora_do_arquivo():
+    with pytest.raises(DateNotAvailable, match="2026-01-01 a 2026-08-31"):
+        stations_for_date("2026-09-15")
 
 
 @pytest.mark.parametrize(

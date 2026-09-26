@@ -1,17 +1,102 @@
-"""Leitura e validação do CSV de estações."""
+"""Estações e chuva diária: leitura, validação e o recorte de um dia.
+
+Os dados ficam em duas tabelas, como num banco: o catálogo de estações
+(data/stations.csv, uma linha por estação) e a chuva diária
+(data/precipitation_daily.csv, uma linha por estação e dia com leitura). O IDW
+de um dia junta as duas num CSV de evento, no formato do plano do projeto:
+station_id, name, longitude, latitude, precip_mm.
+"""
 
 from __future__ import annotations
 
 import csv
 import math
+from functools import lru_cache
 from pathlib import Path
 
+from app import config
+
 REQUIRED = ("station_id", "longitude", "latitude", "precip_mm")
+EVENT_FIELDS = [
+    "station_id", "name", "municipality", "longitude", "latitude",
+    "precip_mm", "date", "source",
+]
 MIN_STATIONS = 3
 
 
+class DateNotAvailable(ValueError):
+    """Dia fora do arquivo, ou com estações de menos para interpolar."""
+
+
+# lru_cache: os CSVs são lidos uma vez por processo, não a cada requisição.
+@lru_cache
+def _read_catalog(path: Path) -> dict[str, dict]:
+    with Path(path).open(encoding="utf-8-sig", newline="") as arquivo:
+        return {
+            row["station_id"]: {
+                "station_id": row["station_id"],
+                "name": row["name"],
+                "municipality": row["municipality"],
+                "longitude": float(row["longitude"]),
+                "latitude": float(row["latitude"]),
+                "source": row["source"],
+            }
+            for row in csv.DictReader(arquivo)
+        }
+
+
+@lru_cache
+def _read_daily(path: Path) -> dict[str, list[tuple[str, float]]]:
+    days: dict[str, list[tuple[str, float]]] = {}
+    with Path(path).open(encoding="utf-8-sig", newline="") as arquivo:
+        for row in csv.DictReader(arquivo):
+            days.setdefault(row["date"], []).append((row["station_id"], float(row["precip_mm"])))
+    return days
+
+
+def available_dates() -> list[dict]:
+    """Os dias do arquivo, com um resumo da chuva — o que o seletor de data mostra."""
+    resumo = []
+    for date, readings in sorted(_read_daily(config.DAILY_CSV).items()):
+        values = [value for _, value in readings]
+        resumo.append({
+            "date": date,
+            "station_count": len(values),
+            "mean": round(sum(values) / len(values), 1),
+            "max": round(max(values), 1),
+        })
+    return resumo
+
+
+def stations_for_date(date: str) -> list[dict]:
+    """As estações com leitura no dia, já com a chuva, no formato do CSV de evento.
+
+    Estação sem leitura no dia simplesmente não aparece — "não mediu" não é
+    "não choveu".
+    """
+    days = _read_daily(config.DAILY_CSV)
+    readings = days.get(date)
+    if readings is None:
+        first, last = min(days), max(days)
+        raise DateNotAvailable(f"sem dados para {date}; o arquivo vai de {first} a {last}")
+    if len(readings) < MIN_STATIONS:
+        raise DateNotAvailable(f"{date} tem só {len(readings)} estações com leitura")
+
+    catalog = _read_catalog(config.STATIONS_CSV)
+    return [{**catalog[sid], "precip_mm": value, "date": date} for sid, value in readings]
+
+
+def write_event_csv(rows: list[dict], path: Path) -> Path:
+    """Grava o CSV de um dia — a entrada do XYTableToPoint."""
+    with Path(path).open("w", encoding="utf-8", newline="") as arquivo:
+        writer = csv.DictWriter(arquivo, fieldnames=EVENT_FIELDS, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(rows)
+    return Path(path)
+
+
 def load_stations(path: Path) -> list[dict]:
-    """Lê o CSV e devolve as estações validadas.
+    """Lê um CSV de evento e devolve as estações validadas.
 
     Falha cedo e aponta a linha do problema: um erro claro aqui é melhor do
     que um raster estranho no fim de um processamento de vários segundos.

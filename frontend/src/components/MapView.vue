@@ -49,7 +49,8 @@ setLocale('pt-BR')
 const mapRef = ref(null)
 const homeRef = ref(null)
 const view = shallowRef(null)
-const stationsReady = ref(false)
+// Sobe a cada troca das feições das estações: o realce precisa ser refeito.
+const stationsVersion = ref(0)
 
 // A superfície é uma imagem ancorada pela extensão. O ArcPy já a entrega em
 // Web Mercator, o mesmo sistema do basemap, então ela cai no lugar sem
@@ -60,6 +61,9 @@ let stationsLayer = null
 let stationsView = null
 let highlight = null
 let pickedOnMap = ''
+// Fila das edições da camada de estações: trocar de dia rápido não pode
+// intercalar duas trocas de feições.
+let edits = Promise.resolve()
 
 function createBasemap() {
   // Os basemaps "arcgis/*" exigem chave; sem ela o SDK responde 401. O OSM não
@@ -73,6 +77,7 @@ function createBasemap() {
   })
 }
 
+// Campo numérico formatado exige places E digitSeparator juntos.
 const NUMBER_FORMAT = { places: 1, digitSeparator: true }
 
 const STATION_FIELDS = [
@@ -85,18 +90,18 @@ const STATION_FIELDS = [
   { name: 'error', type: 'double', alias: 'Erro (mm)' },
 ]
 
-// O objectId é a posição na lista + 1: estável entre resultados, é por ele
-// que o applyEdits acha a feição a atualizar e que o clique acha a estação.
-function attributesOf(row, index) {
-  return {
-    oid: index + 1,
-    station_id: row.station_id,
-    name: row.name,
-    municipality: row.municipality,
-    precip_mm: row.precip_mm,
-    estimated: row.estimated,
-    error: row.error,
-  }
+function toGraphic(row) {
+  return new Graphic({
+    geometry: { type: 'point', longitude: row.longitude, latitude: row.latitude },
+    attributes: {
+      station_id: row.station_id,
+      name: row.name,
+      municipality: row.municipality,
+      precip_mm: row.precip_mm,
+      estimated: row.estimated,
+      error: row.error,
+    },
+  })
 }
 
 /**
@@ -122,13 +127,12 @@ function stationRenderer(legend) {
   }
 }
 
-function createStationsLayer(rows, legend) {
+function createStationsLayer(legend) {
   return new FeatureLayer({
     title: 'Estações do CEMADEN',
-    source: rows.map((row, index) => new Graphic({
-      geometry: { type: 'point', longitude: row.longitude, latitude: row.latitude },
-      attributes: attributesOf(row, index),
-    })),
+    // Nasce vazia: as feições entram e saem por applyEdits, e a camada
+    // numera os objectIds sozinha.
+    source: [],
     objectIdField: 'oid',
     geometryType: 'point',
     spatialReference: { wkid: 4326 },
@@ -142,7 +146,6 @@ function createStationsLayer(rows, legend) {
       title: '{name} — {municipality}',
       content: [{
         type: 'fields',
-        // Campo numérico formatado exige places E digitSeparator juntos.
         fieldInfos: [
           { fieldName: 'precip_mm', label: 'Chuva observada em 24 h (mm)', format: NUMBER_FORMAT },
           { fieldName: 'estimated', label: 'Estimada pelo IDW sem esta estação (mm)', format: NUMBER_FORMAT },
@@ -154,11 +157,37 @@ function createStationsLayer(rows, legend) {
   })
 }
 
+/** Troca todas as feições de uma vez: o conjunto muda com o dia, porque nem toda estação mede todo dia. */
+async function replaceStations(rows) {
+  const antigas = await stationsLayer.queryObjectIds()
+  await stationsLayer.applyEdits({
+    deleteFeatures: antigas.map((objectId) => ({ objectId })),
+    addFeatures: rows.map(toGraphic),
+  })
+  stationsVersion.value += 1
+}
+
+async function findStation(id) {
+  if (!stationsLayer || !id) return null
+  const { features } = await stationsLayer.queryFeatures({
+    where: `station_id = '${id.replaceAll("'", "''")}'`,
+    returnGeometry: true,
+    outFields: ['*'],
+  })
+  return features[0] ?? null
+}
+
 // Superfície: cada resultado troca a imagem e a extensão da mesma camada.
 watch([view, () => props.result], ([v, result]) => {
-  if (!v || !result) return
+  if (!v) return
+  // Depois que a camada carrega, a fonte não pode ser trocada inteira: o
+  // SDK 5 recusa. Troca-se o que está dentro dela.
+  surfaceLayer.source.elements.removeAll()
+  // Sem resultado para o dia exibido (ainda calculando), sem superfície:
+  // melhor um mapa só com as estações do que a chuva de outro dia.
+  if (!result) return
   const e = result.image_extent
-  const imagem = new ImageElement({
+  surfaceLayer.source.elements.add(new ImageElement({
     image: result.urls.png,
     georeference: new ExtentAndRotationGeoreference({
       extent: {
@@ -166,11 +195,7 @@ watch([view, () => props.result], ([v, result]) => {
         spatialReference: { wkid: e.wkid },
       },
     }),
-  })
-  // Depois que a camada carrega, a fonte não pode ser trocada inteira: o
-  // SDK 5 recusa. Troca-se o que está dentro dela.
-  surfaceLayer.source.elements.removeAll()
-  surfaceLayer.source.elements.add(imagem)
+  }))
 })
 
 // Limite do estado: criado uma vez, e usado para enquadrar o mapa.
@@ -198,22 +223,19 @@ watch([view, () => props.studyAreaUrl], ([v, url]) => {
   })
 })
 
-// Estações: a camada nasce com o primeiro lote; resultados seguintes só
-// reescrevem os atributos da validação, sem recriar nada — o mapa não pisca.
-watch([view, () => props.stations, () => props.legend], async ([v, rows, legend]) => {
-  if (!v || !rows.length || !legend.length) return
+// Estações: uma camada só; a cada dia ou resultado novo, as feições são
+// trocadas de uma vez, na ordem em que as mudanças chegaram.
+watch([view, () => props.stations, () => props.legend], ([v, rows, legend]) => {
+  if (!v || !legend.length) return
   if (!stationsLayer) {
-    stationsLayer = createStationsLayer(rows, legend)
+    stationsLayer = createStationsLayer(legend)
     stationsLayer.visible = props.showStations
     v.map.add(stationsLayer)
-    stationsView = await v.whenLayerView(stationsLayer)
-    stationsReady.value = true
-    return
+    edits = edits.then(async () => { stationsView = await v.whenLayerView(stationsLayer) })
   }
-  await stationsLayer.when()
-  await stationsLayer.applyEdits({
-    updateFeatures: rows.map((row, index) => ({ attributes: attributesOf(row, index) })),
-  })
+  // O popup aberto mostraria atributos de feições que acabaram de sair.
+  if (v.popup?.visible) v.closePopup()
+  edits = edits.then(() => replaceStations(rows)).catch(() => {})
 })
 
 watch(() => props.showSurface, (visivel) => { surfaceLayer.visible = visivel })
@@ -221,28 +243,28 @@ watch(() => props.surfaceOpacity, (opacidade) => { surfaceLayer.opacity = opacid
 watch(() => props.showBoundary, (visivel) => { if (boundaryLayer) boundaryLayer.visible = visivel })
 watch(() => props.showStations, (visivel) => { if (stationsLayer) stationsLayer.visible = visivel })
 
-// Estação escolhida (no mapa ou na tabela): realça e, se veio da tabela,
-// leva o mapa até ela e abre o popup. `stationsReady` entra na lista para a
-// escolha feita antes de a camada carregar não se perder.
-watch([() => props.selectedStationId, view, stationsReady], async ([id, v, pronta]) => {
+// Realce da estação escolhida: refeito também quando as feições são trocadas,
+// porque o realce antigo apontava para feições que não existem mais.
+watch([() => props.selectedStationId, stationsVersion], async ([id]) => {
   highlight?.remove()
   highlight = null
-  if (!id || !v || !pronta) return
-  const oid = props.stations.findIndex((s) => s.station_id === id) + 1
-  if (!oid) return
-  highlight = stationsView?.highlight(oid) ?? null
+  const feicao = await findStation(id)
+  if (feicao && stationsView) highlight = stationsView.highlight(feicao)
+})
 
-  // O clique no mapa já abriu o popup onde a pessoa está olhando.
+// Estação escolhida na tabela: leva o mapa até ela e abre o popup. A escolhida
+// no mapa não precisa — o popup já abriu onde a pessoa está olhando.
+watch(() => props.selectedStationId, async (id) => {
+  if (!id || !view.value) return
   if (pickedOnMap === id) {
     pickedOnMap = ''
     return
   }
-  const { features } = await stationsLayer.queryFeatures({
-    objectIds: [oid], returnGeometry: true, outFields: ['*'],
-  })
-  if (!features.length) return
-  await v.goTo({ target: features[0].geometry, zoom: Math.max(v.zoom, 10) }, { duration: 600 })
-  v.openPopup({ features, location: features[0].geometry })
+  await edits
+  const feicao = await findStation(id)
+  if (!feicao) return
+  await view.value.goTo({ target: feicao.geometry, zoom: Math.max(view.value.zoom, 10) }, { duration: 600 })
+  view.value.openPopup({ features: [feicao], location: feicao.geometry })
 })
 
 onMounted(() => {
@@ -262,7 +284,13 @@ onMounted(() => {
       // O hitTest devolve só o objectId e o campo do renderer: o SDK não
       // embarca no gráfico de desenho atributos que não precisa para pintar.
       const oid = alvo.results.find((r) => r.graphic?.attributes?.oid)?.graphic.attributes.oid
-      const id = oid ? props.stations[oid - 1]?.station_id ?? '' : ''
+      let id = ''
+      if (oid) {
+        const { features } = await stationsLayer.queryFeatures({
+          objectIds: [oid], outFields: ['station_id'],
+        })
+        id = features[0]?.attributes.station_id ?? ''
+      }
       pickedOnMap = id
       emit('select-station', id)
     })

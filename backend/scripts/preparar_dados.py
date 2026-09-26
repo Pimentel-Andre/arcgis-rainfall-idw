@@ -1,15 +1,19 @@
-"""Prepara os dados de entrada: as estações do dia e a área de estudo.
+"""Prepara os dados de entrada: estações, chuva diária e área de estudo.
 
-As duas fontes são públicas e o script usa só a biblioteca padrão do Python —
-não precisa de ArcPy nem de credenciais:
+As fontes são públicas e o script usa só a biblioteca padrão do Python — não
+precisa de ArcPy nem de credenciais:
 
-1. Estações: o acumulado de 24 h de um dia, tirado da série que o
-   monitor-chuva-rj publica (pluviômetros do CEMADEN no estado do RJ).
+1. Estações e chuva: o arquivo fechado de 1º de janeiro a 31 de agosto de 2026
+   que o monitor-chuva-rj publica (pluviômetros do CEMADEN no estado do RJ).
 2. Área de estudo: o limite do estado do RJ, da API de malhas do IBGE.
+
+Saídas, em data/:
+    stations.csv             uma linha por estação (código, nome, coordenadas)
+    precipitation_daily.csv  uma linha por estação e dia COM leitura
+    study_area.geojson       o polígono do estado
 
 Uso:
     python backend/scripts/preparar_dados.py
-    python backend/scripts/preparar_dados.py --dia 2026-02-27
 """
 
 from __future__ import annotations
@@ -33,15 +37,8 @@ URL_LIMITE = (
     "?formato=application/vnd.geo%2Bjson&qualidade=maxima"
 )
 
-# O dia mais chuvoso do arquivo: média de 47,5 mm nas 143 estações com leitura
-# e máximo de 182,8 mm. Um dia seco daria uma superfície chapada, sem nada
-# para a interpolação mostrar.
-DIA_PADRAO = "2026-01-20"
-
-CAMPOS = [
-    "station_id", "name", "municipality", "longitude", "latitude",
-    "precip_mm", "date", "source",
-]
+CAMPOS_ESTACOES = ["station_id", "name", "municipality", "longitude", "latitude", "source"]
+CAMPOS_CHUVA = ["date", "station_id", "precip_mm"]
 
 PARTICULAS = {"de", "da", "do", "das", "dos", "e"}
 
@@ -55,34 +52,40 @@ def nome_proprio(texto: str) -> str:
     )
 
 
-def estacoes_do_dia(serie: dict, dia: str) -> list[dict]:
-    """Linhas do CSV para um dia da série, só com estações confiáveis."""
-    if dia not in serie["datas"]:
-        inicio, fim = serie["datas"][0], serie["datas"][-1]
-        raise ValueError(f"{dia} fora da série ({inicio} a {fim})")
-    i = serie["datas"].index(dia)
+def estacoes_e_chuva(serie: dict) -> tuple[list[dict], list[dict]]:
+    """Catálogo de estações e chuva diária, só com o que é confiável.
 
-    linhas = []
+    Duas regras, as mesmas do monitor-chuva-rj:
+    - dia sem leitura não vira linha: "não mediu" não é "não choveu", e um
+      zero ali cavaria um falso buraco seco na superfície interpolada;
+    - pluviômetro travado sai inteiro: mediria 0 mm onde choveu.
+    """
+    estacoes, chuva = [], []
     for estacao in serie["estacoes"]:
-        # Sem leitura no dia não é 0 mm. Entrar no IDW como zero pintaria de
-        # "seco" o entorno de uma estação que simplesmente não mediu.
-        if estacao["presenca"][i] != "1":
-            continue
-        # Pluviômetro travado, pelo critério do monitor-chuva-rj: mediria
-        # 0 mm onde choveu e cavaria um falso buraco seco na superfície.
         if estacao["suspeita"]:
             continue
-        linhas.append({
+        dias = [
+            (serie["datas"][i], estacao["acum_24h"][i])
+            for i, presente in enumerate(estacao["presenca"])
+            if presente == "1"
+        ]
+        if not dias:
+            continue
+        estacoes.append({
             "station_id": estacao["codestacao"],
             "name": estacao["nome"],
             "municipality": nome_proprio(estacao["municipio"]),
             "longitude": round(estacao["lon"], 6),
             "latitude": round(estacao["lat"], 6),
-            "precip_mm": round(estacao["acum_24h"][i], 1),
-            "date": dia,
             "source": "CEMADEN",
         })
-    return sorted(linhas, key=lambda linha: linha["station_id"])
+        chuva.extend(
+            {"date": dia, "station_id": estacao["codestacao"], "precip_mm": round(valor, 1)}
+            for dia, valor in dias
+        )
+    estacoes.sort(key=lambda e: e["station_id"])
+    chuva.sort(key=lambda c: (c["date"], c["station_id"]))
+    return estacoes, chuva
 
 
 def baixar_json(url: str) -> dict:
@@ -95,9 +98,15 @@ def baixar_json(url: str) -> dict:
     return json.loads(corpo)
 
 
+def gravar_csv(caminho: Path, campos: list[str], linhas: list[dict]) -> None:
+    with caminho.open("w", encoding="utf-8", newline="") as arquivo:
+        escritor = csv.DictWriter(arquivo, fieldnames=campos)
+        escritor.writeheader()
+        escritor.writerows(linhas)
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    p.add_argument("--dia", default=DIA_PADRAO, help="dia da série (AAAA-MM-DD)")
     p.add_argument("--serie", default=URL_SERIE,
                    help="URL ou caminho local do serie.json do monitor-chuva-rj")
     p.add_argument("--saida", type=Path, default=PASTA_DADOS)
@@ -108,13 +117,10 @@ def main() -> None:
     else:
         serie = json.loads(Path(args.serie).read_text(encoding="utf-8"))
 
-    linhas = estacoes_do_dia(serie, args.dia)
+    estacoes, chuva = estacoes_e_chuva(serie)
     args.saida.mkdir(parents=True, exist_ok=True)
-    caminho_csv = args.saida / "stations_sample.csv"
-    with caminho_csv.open("w", encoding="utf-8", newline="") as arquivo:
-        escritor = csv.DictWriter(arquivo, fieldnames=CAMPOS)
-        escritor.writeheader()
-        escritor.writerows(linhas)
+    gravar_csv(args.saida / "stations.csv", CAMPOS_ESTACOES, estacoes)
+    gravar_csv(args.saida / "precipitation_daily.csv", CAMPOS_CHUVA, chuva)
 
     limite = baixar_json(URL_LIMITE)
     limite["features"][0]["properties"] = {
@@ -122,18 +128,15 @@ def main() -> None:
         "nome": "Rio de Janeiro",
         "fonte": "IBGE, API de malhas territoriais v3 (qualidade máxima)",
     }
-    caminho_limite = args.saida / "study_area.geojson"
-    caminho_limite.write_text(
+    (args.saida / "study_area.geojson").write_text(
         json.dumps(limite, ensure_ascii=False, separators=(",", ":")),
         encoding="utf-8",
     )
 
-    valores = [linha["precip_mm"] for linha in linhas]
+    dias = sorted({c["date"] for c in chuva})
     print(
-        f"{len(linhas)} estações em {args.dia} -> {caminho_csv}\n"
-        f"chuva de 24 h: mín {min(valores):.1f} · "
-        f"média {sum(valores) / len(valores):.1f} · máx {max(valores):.1f} mm\n"
-        f"área de estudo -> {caminho_limite}"
+        f"{len(estacoes)} estações, {len(chuva):,} leituras diárias, "
+        f"{len(dias)} dias ({dias[0]} a {dias[-1]}) -> {args.saida}"
     )
 
 

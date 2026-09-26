@@ -17,7 +17,9 @@ import numpy as np
 
 from app import config
 from app.services import symbology, validation
-from app.services.stations import dataset_info, load_stations
+from app.services.stations import (
+    dataset_info, load_stations, stations_for_date, write_event_csv,
+)
 
 try:
     import arcpy
@@ -32,6 +34,7 @@ except Exception as exc:  # sem ArcGIS Pro instalado, ou sem licença
     ARCPY_ERROR = f"{type(exc).__name__}: {exc}"
 
 WORKSPACE = "memory"
+STATIONS = "stations.csv"
 GEOTIFF = "precipitation_idw.tif"
 PNG = "precipitation_idw.png"
 
@@ -62,9 +65,9 @@ def engine_info() -> dict:
     }
 
 
-def run_id(power: float, cell_size: float, neighbors: int) -> str:
-    """Nome estável da rodada: os mesmos parâmetros caem na mesma pasta."""
-    return f"idw_p{power:g}_c{cell_size:g}_n{neighbors}"
+def run_id(date: str, power: float, cell_size: float, neighbors: int) -> str:
+    """Nome estável da rodada: o mesmo dia e parâmetros caem na mesma pasta."""
+    return f"idw_{date}_p{power:g}_c{cell_size:g}_n{neighbors}"
 
 
 # --- Etapas ----------------------------------------------------------------
@@ -211,27 +214,31 @@ def read_points(points_fc: str, value_field: str):
 # --- Orquestração ----------------------------------------------------------
 
 def run_idw(
+    date: str = config.DEFAULT_DATE,
     power: float = 2,
     cell_size: float = 1000,
     neighbors: int = 12,
-    stations_csv: Path | None = None,
     study_area: Path | None = None,
     outputs_dir: Path | None = None,
 ) -> dict:
-    """Roda o pipeline inteiro e devolve o resultado que a API publica."""
+    """Roda o pipeline inteiro para um dia e devolve o resultado que a API publica."""
+    # O dia é conferido antes do ArcPy: um erro de data é do pedido, e deve
+    # voltar como tal mesmo numa máquina sem licença.
+    rows = stations_for_date(date)
     if arcpy is None:
         raise ArcPyUnavailable(f"ArcPy indisponível ({ARCPY_ERROR})")
-    stations_csv = stations_csv or config.STATIONS_CSV
     study_area = study_area or config.STUDY_AREA
     outputs_dir = outputs_dir or config.OUTPUTS_DIR
 
-    # Valida o CSV antes de gastar tempo com o ArcPy.
-    stations = load_stations(stations_csv)
-
-    rid = run_id(power, cell_size, neighbors)
+    rid = run_id(date, power, cell_size, neighbors)
     out_dir = Path(outputs_dir) / rid
     out_dir.mkdir(parents=True, exist_ok=True)
     tif_path, png_path = out_dir / GEOTIFF, out_dir / PNG
+
+    # O dia vira um CSV de evento dentro da pasta da rodada: fica registrado
+    # exatamente o que entrou no IDW, ao lado do que saiu dele.
+    stations_csv = write_event_csv(rows, out_dir / STATIONS)
+    stations = load_stations(stations_csv)
 
     with _LOCK:
         started = time.perf_counter()
@@ -265,6 +272,7 @@ def run_idw(
         "method": "IDW",
         "engine": f"ArcPy {arcpy.GetInstallInfo()['Version']} · Spatial Analyst",
         "run_id": rid,
+        "date": date,
         "power": power,
         "cell_size": cell_size,
         "neighbors": neighbors,
@@ -273,7 +281,7 @@ def run_idw(
         "max_precipitation": round(summary["max"], 1),
         "mean_precipitation": round(summary["mean"], 1),
         "output": GEOTIFF,
-        "files": {"geotiff": GEOTIFF, "png": PNG},
+        "files": {"geotiff": GEOTIFF, "png": PNG, "stations": STATIONS},
         "raster": {
             "columns": summary["columns"],
             "rows": summary["rows"],

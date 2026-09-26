@@ -5,6 +5,8 @@ página /docs — e a primeira barreira: um pedido fora dos limites volta com
 422 antes de chegar perto do ArcPy.
 """
 
+import datetime as dt
+
 from pydantic import BaseModel, Field
 
 
@@ -16,6 +18,12 @@ class IdwParams(BaseModel):
     recusar os que não têm sentido (potência zero pesa todas as estações igual).
     """
 
+    # `dt.date`, e não `date` importado solto: um campo chamado date com o
+    # tipo date confunde o Pydantic.
+    date: dt.date = Field(
+        dt.date(2026, 1, 20),
+        description="Dia da chuva de 24 h (janela UTC), de 2026-01-01 a 2026-08-31.",
+    )
     power: float = Field(
         2, gt=0, le=6,
         description="Potência: quanto uma estação próxima pesa mais que uma distante.",
@@ -30,7 +38,9 @@ class IdwParams(BaseModel):
     )
 
     model_config = {
-        "json_schema_extra": {"examples": [{"power": 2, "cell_size": 1000, "neighbors": 12}]}
+        "json_schema_extra": {
+            "examples": [{"date": "2026-01-20", "power": 2, "cell_size": 1000, "neighbors": 12}]
+        }
     }
 
 
@@ -89,6 +99,7 @@ class IdwResult(BaseModel):
     method: str
     engine: str
     run_id: str
+    date: str
     power: float
     cell_size: float
     neighbors: int
@@ -120,6 +131,18 @@ class StationsResponse(BaseModel):
     dataset: DatasetInfo
     legend: list[LegendClass]
     stations: list[Station]
+
+
+class DaySummary(BaseModel):
+    date: str
+    station_count: int
+    mean: float
+    max: float
+
+
+class DatesResponse(BaseModel):
+    default: str
+    dates: list[DaySummary]
 
 
 class EngineInfo(BaseModel):

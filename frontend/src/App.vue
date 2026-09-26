@@ -1,6 +1,7 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 
+import DaySelector from './components/DaySelector.vue'
 import InterpolationForm from './components/InterpolationForm.vue'
 import MapLegend from './components/MapLegend.vue'
 import MapView from './components/MapView.vue'
@@ -11,8 +12,8 @@ import { dateBR } from './format.js'
 
 const {
   source, mode, notice, error, booting, loading,
-  dataset, legend, stationRows, stationCount, result, params,
-  start, runInterpolation,
+  dates, date, dataset, legend, stationRows, stationCount, result, params,
+  start, selectDate, runInterpolation,
 } = useInterpolation()
 
 // O que o mapa mostra é estado da tela, não dos dados: fica aqui, e o mapa
@@ -28,7 +29,13 @@ function selectFromTable(id) {
   mapCard.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
 }
 
-const demoOptions = computed(() => (mode.value === 'demo' ? source.value.manifest.options : null))
+// Nem toda estação mede todo dia: se a escolhida não existe no dia novo, a
+// escolha cai.
+watch(stationRows, (rows) => {
+  if (selectedStationId.value && !rows.some((r) => r.station_id === selectedStationId.value)) {
+    selectedStationId.value = ''
+  }
+})
 
 const subtitle = computed(() => {
   if (!dataset.value) return 'Carregando as estações…'
@@ -57,6 +64,12 @@ onMounted(start)
 
     <main class="corpo">
       <section ref="mapCard" class="cartao mapa-cartao">
+        <DaySelector
+          :dates="dates"
+          :model-value="date"
+          :disabled="loading || booting"
+          @update:model-value="selectDate"
+        />
         <MapView
           :stations="stationRows"
           :legend="legend"
@@ -76,7 +89,7 @@ onMounted(start)
       <aside class="painel">
         <InterpolationForm
           :params="params"
-          :options="demoOptions"
+          :locked="mode === 'demo'"
           :loading="loading"
           :disabled="booting"
           @run-idw="runInterpolation"

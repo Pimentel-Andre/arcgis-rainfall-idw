@@ -6,9 +6,14 @@ ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = ROOT / "data"
 OUTPUTS_DIR = ROOT / "outputs"
 
-STATIONS_CSV = DATA_DIR / "stations_sample.csv"
+STATIONS_CSV = DATA_DIR / "stations.csv"
+DAILY_CSV = DATA_DIR / "precipitation_daily.csv"
 STUDY_AREA = DATA_DIR / "study_area.geojson"
 VALUE_FIELD = "precip_mm"
+
+# O arquivo é fechado: 1º de janeiro a 31 de agosto de 2026. O mapa abre no
+# dia mais chuvoso (média de 47,5 mm), que mostra bem o que o IDW faz.
+DEFAULT_DATE = "2026-01-20"
 
 # Os dados chegam em graus (WGS 84), mas o IDW pondera por distância e precisa
 # de um sistema em metros. O SIRGAS 2000 / UTM 23S serve ao estado inteiro: o

@@ -2,27 +2,35 @@
 
 A validação leave-one-out é feita em NumPy por velocidade, e só vale se for a
 mesma conta do Spatial Analyst. O teste sorteia células do raster gerado pelo
-ArcPy e recalcula cada uma em NumPy. Sem ArcGIS Pro (no CI, por exemplo), é
-pulado.
+ArcPy e recalcula cada uma em NumPy. Sem ArcPy disponível (no CI, ou sem a
+licença do ArcGIS Pro ativa), é pulado.
 """
 
 import numpy as np
 import pytest
 
-arcpy = pytest.importorskip("arcpy")
+from app import config
+from app.services import idw_service as s
+from app.services.stations import stations_for_date, write_event_csv
+from app.services.validation import idw_points
 
-from app import config  # noqa: E402
-from app.services import idw_service as s  # noqa: E402
-from app.services.validation import idw_points  # noqa: E402
+if s.arcpy is None:
+    pytest.skip(f"ArcPy indisponível: {s.ARCPY_ERROR}", allow_module_level=True)
+
+arcpy = s.arcpy
 
 
-@pytest.mark.parametrize("power, neighbors", [(2, 12), (1, 6), (3, 24)])
-def test_idw_em_numpy_bate_com_o_arcpy(power, neighbors):
+@pytest.mark.parametrize(
+    "dia, power, neighbors",
+    [("2026-01-20", 2, 12), ("2026-02-27", 1, 6), ("2026-05-20", 3, 24)],
+)
+def test_idw_em_numpy_bate_com_o_arcpy(tmp_path, dia, power, neighbors):
+    csv_do_dia = write_event_csv(stations_for_date(dia), tmp_path / "estacoes.csv")
     arcpy.CheckOutExtension("Spatial")
     try:
         with arcpy.EnvManager(overwriteOutput=True):
             pontos = s.project(
-                s.create_points(config.STATIONS_CSV, r"memory\t_pontos"),
+                s.create_points(csv_do_dia, r"memory\t_pontos"),
                 r"memory\t_pontos_utm", config.ANALYSIS_WKID,
             )
             area = s.project(

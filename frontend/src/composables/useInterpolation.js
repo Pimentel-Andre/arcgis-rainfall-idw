@@ -5,9 +5,10 @@ import { createApiSource, createDemoSource, detectBackend } from '../services/id
 export const DEFAULT_PARAMS = { power: 2, cell_size: 1000, neighbors: 12 }
 
 /**
- * O estado da interpolação num lugar só: de onde vêm os dados, as estações,
- * os parâmetros e o último resultado. Os componentes recebem pedaços disso
- * por props e avisam mudanças por eventos — nenhum deles chama a API.
+ * O estado da interpolação num lugar só: de onde vêm os dados, o dia, as
+ * estações, os parâmetros e o último resultado. Os componentes recebem
+ * pedaços disso por props e avisam mudanças por eventos — nenhum deles chama
+ * a API.
  */
 export function useInterpolation() {
   const source = shallowRef(null)
@@ -16,8 +17,10 @@ export function useInterpolation() {
   const booting = ref(true)
   const loading = ref(false)
 
-  // shallowRef: listas grandes que só são trocadas inteiras, nunca editadas
-  // por dentro. Reatividade profunda custaria caro e não serviria para nada.
+  // shallowRef: listas que só são trocadas inteiras, nunca editadas por
+  // dentro. Reatividade profunda custaria caro e não serviria para nada.
+  const dates = shallowRef([])
+  const date = ref('')
   const dataset = shallowRef(null)
   const legend = shallowRef([])
   const stations = shallowRef([])
@@ -27,11 +30,16 @@ export function useInterpolation() {
   const mode = computed(() => source.value?.mode ?? null)
   const stationCount = computed(() => stations.value.length)
 
+  // Trocar de dia leva alguns segundos com o ArcPy. Nesse meio-tempo o
+  // resultado anterior é de OUTRO dia, e misturá-lo com as estações novas
+  // mostraria a validação de um dia sobre a chuva de outro.
+  const currentResult = computed(() => (result.value?.date === date.value ? result.value : null))
+
   // Cada estação com a sua validação ao lado — é o que a tabela e o popup
   // mostram: quanto choveu e quanto o IDW estimaria ali sem ela.
   const stationRows = computed(() => {
     const porId = new Map(
-      (result.value?.validation.stations ?? []).map((v) => [v.station_id, v]),
+      (currentResult.value?.validation.stations ?? []).map((v) => [v.station_id, v]),
     )
     return stations.value.map((s) => ({
       ...s,
@@ -45,13 +53,28 @@ export function useInterpolation() {
     loading.value = true
     error.value = ''
     try {
-      result.value = await source.value.runIdw({ ...params })
+      result.value = await source.value.runIdw({ date: date.value, ...params })
     } catch (falha) {
-      // O resultado anterior continua no mapa: melhor que uma tela vazia.
       error.value = `Não foi possível executar o IDW: ${falha.message}`
     } finally {
       loading.value = false
     }
+  }
+
+  async function selectDate(novo) {
+    if (!novo || novo === date.value) return
+    error.value = ''
+    try {
+      const dados = await source.value.getStations(novo)
+      date.value = novo
+      dataset.value = dados.dataset
+      legend.value = dados.legend
+      stations.value = dados.stations
+    } catch (falha) {
+      error.value = `Não foi possível carregar ${novo}: ${falha.message}`
+      return
+    }
+    await runInterpolation()
   }
 
   async function start() {
@@ -62,16 +85,17 @@ export function useInterpolation() {
       } else {
         source.value = await createDemoSource()
         if (saude) {
-          notice.value = `A API local está no ar, mas sem ArcPy (${saude.engine.detail}). `
-            + 'Com o ArcGIS Pro aberto e logado, reinicie a API para processar ao vivo. '
-            + 'Enquanto isso, o mapa mostra os cenários pré-processados.'
+          notice.value = `A API local está no ar, mas o ArcPy não obteve a licença (${saude.engine.detail}). `
+            + 'Abra o ArcGIS Pro, entre na sua conta e reinicie a API para rodar o IDW com '
+            + 'qualquer parâmetro. Enquanto isso, o mapa mostra resultados já processados.'
         }
       }
-      const dados = await source.value.getStations()
-      dataset.value = dados.dataset
-      legend.value = dados.legend
-      stations.value = dados.stations
-      await runInterpolation()
+      // No site estático os parâmetros são os dos arquivos pré-processados.
+      if (source.value.fixedParams) Object.assign(params, source.value.fixedParams)
+
+      const lista = await source.value.getDates()
+      dates.value = lista.dates
+      await selectDate(lista.default)
     } catch (falha) {
       error.value = `Não foi possível carregar os dados: ${falha.message}`
     } finally {
@@ -81,7 +105,8 @@ export function useInterpolation() {
 
   return {
     source, mode, notice, error, booting, loading,
-    dataset, legend, stations, stationRows, stationCount, result, params,
-    start, runInterpolation,
+    dates, date, dataset, legend, stations, stationRows, stationCount,
+    result: currentResult, params,
+    start, selectDate, runInterpolation,
   }
 }

@@ -3,8 +3,8 @@ import { reactive, watch } from 'vue'
 
 const props = defineProps({
   params: { type: Object, required: true },
-  // Valores pré-processados (modo demonstração). Sem eles, o campo é livre.
-  options: { type: Object, default: null },
+  // Site estático: os parâmetros são os dos arquivos pré-processados.
+  locked: { type: Boolean, default: false },
   loading: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false },
 })
@@ -49,16 +49,13 @@ function submit() {
     <label v-for="campo in FIELDS" :key="campo.key" class="campo">
       <span class="rotulo">{{ campo.label }}</span>
       <span class="entrada">
-        <select v-if="options" v-model.number="draft[campo.key]">
-          <option v-for="valor in options[campo.key]" :key="valor" :value="valor">{{ valor }}</option>
-        </select>
         <input
-          v-else
           v-model.number="draft[campo.key]"
           type="number"
           :min="campo.min"
           :max="campo.max"
           :step="campo.step"
+          :disabled="locked"
           required
         />
         <span class="unidade">{{ campo.unit }}</span>
@@ -66,13 +63,13 @@ function submit() {
       <small>{{ campo.help }}</small>
     </label>
 
-    <button type="submit" :disabled="loading || disabled">
-      {{ loading ? 'Processando…' : 'Executar IDW' }}
+    <button v-if="!locked" type="submit" :disabled="loading || disabled">
+      {{ loading ? 'Processando no ArcPy…' : 'Executar IDW' }}
     </button>
-
-    <p v-if="options" class="nota">
-      Modo demonstração: cenários processados com ArcPy e congelados em arquivo.
-      Para qualquer valor, rode o backend — instruções no README.
+    <p v-else class="nota">
+      Site estático: cada dia foi processado com ArcPy usando estes parâmetros
+      e congelado em arquivo. Para variá-los, rode o backend — instruções no
+      README.
     </p>
   </form>
 </template>
@@ -103,8 +100,7 @@ function submit() {
   align-items: center;
 }
 
-.entrada input,
-.entrada select {
+.entrada input {
   width: 6.5rem;
   padding: 0.35rem 0.5rem;
   font: inherit;
@@ -113,6 +109,11 @@ function submit() {
   background: #fff;
   border: 1px solid var(--linha);
   border-radius: 6px;
+}
+
+.entrada input:disabled {
+  color: var(--tinta-2);
+  background: var(--fundo);
 }
 
 .unidade {
