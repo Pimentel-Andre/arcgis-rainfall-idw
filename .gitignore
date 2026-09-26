@@ -1,0 +1,15 @@
+# Resultados do processamento: regeráveis a partir de data/ e do código.
+/outputs/*
+!/outputs/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node / build
+node_modules/
+frontend/dist/
+
+# Credenciais (API key do ArcGIS) — nunca versionar
+frontend/.env.local
