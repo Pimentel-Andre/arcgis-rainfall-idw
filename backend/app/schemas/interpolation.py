@@ -9,38 +9,40 @@ import datetime as dt
 
 from pydantic import BaseModel, Field
 
+from app.config import DEFAULT_DATE, DEFAULT_PARAMS
+
 
 class IdwParams(BaseModel):
     """Parâmetros do IDW.
 
-    Os limites existem por dois motivos: evitar pedidos que travariam o
-    servidor (célula de 10 m no estado inteiro são 440 milhões de células) e
-    recusar os que não têm sentido (potência zero pesa todas as estações igual).
+    Os padrões não são os de fábrica: saem da validação cruzada nos 243 dias
+    (scripts/otimizar_parametros.py). Os limites existem por dois motivos:
+    evitar pedidos que travariam o servidor (célula de 10 m no estado inteiro
+    são 440 milhões de células) e recusar os que não têm sentido (potência zero
+    pesa todas as estações igual).
     """
 
     # `dt.date`, e não `date` importado solto: um campo chamado date com o
     # tipo date confunde o Pydantic.
     date: dt.date = Field(
-        dt.date(2026, 1, 20),
+        dt.date.fromisoformat(DEFAULT_DATE),
         description="Dia da chuva de 24 h (janela UTC), de 2026-01-01 a 2026-08-31.",
     )
     power: float = Field(
-        2, gt=0, le=6,
+        DEFAULT_PARAMS["power"], gt=0, le=6,
         description="Potência: quanto uma estação próxima pesa mais que uma distante.",
     )
     cell_size: float = Field(
-        1000, ge=250, le=5000,
+        DEFAULT_PARAMS["cell_size"], ge=250, le=5000,
         description="Resolução da célula do raster, em metros.",
     )
     neighbors: int = Field(
-        12, ge=3, le=50,
+        DEFAULT_PARAMS["neighbors"], ge=3, le=50,
         description="Estações usadas no cálculo de cada célula (raio variável).",
     )
 
     model_config = {
-        "json_schema_extra": {
-            "examples": [{"date": "2026-01-20", "power": 2, "cell_size": 1000, "neighbors": 12}]
-        }
+        "json_schema_extra": {"examples": [{"date": DEFAULT_DATE, **DEFAULT_PARAMS}]}
     }
 
 

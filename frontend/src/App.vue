@@ -5,6 +5,7 @@ import DaySelector from './components/DaySelector.vue'
 import InterpolationForm from './components/InterpolationForm.vue'
 import MapLegend from './components/MapLegend.vue'
 import MapView from './components/MapView.vue'
+import MethodPanel from './components/MethodPanel.vue'
 import StationTable from './components/StationTable.vue'
 import StatisticsPanel from './components/StatisticsPanel.vue'
 import { useInterpolation } from './composables/useInterpolation.js'
@@ -12,7 +13,7 @@ import { dateBR } from './format.js'
 
 const {
   source, mode, notice, error, booting, loading,
-  dates, date, dataset, legend, stationRows, stationCount, result, params,
+  dates, date, dataset, legend, stationRows, stationCount, result, params, method,
   start, selectDate, runInterpolation,
 } = useInterpolation()
 
@@ -124,6 +125,8 @@ onMounted(start)
       :selected-id="selectedStationId"
       @select="selectFromTable"
     />
+
+    <MethodPanel v-if="method" :method="method" />
 
     <footer class="rodape">
       Dados: CEMADEN (pluviômetros) e IBGE (limite estadual) · Processamento: ArcPy

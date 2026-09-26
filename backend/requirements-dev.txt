@@ -6,3 +6,5 @@ pillow
 pydantic>=2
 httpx
 pytest
+# scripts/otimizar_parametros.py projeta as estações sem o ArcPy
+pyproj

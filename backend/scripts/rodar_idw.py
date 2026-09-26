@@ -15,16 +15,17 @@ from pathlib import Path
 # Deixa `import app` funcionar rodando o script de qualquer pasta.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.config import DEFAULT_DATE, OUTPUTS_DIR  # noqa: E402
+from app.config import DEFAULT_DATE, DEFAULT_PARAMS, OUTPUTS_DIR  # noqa: E402
 from app.services.idw_service import run_idw  # noqa: E402
 
 
 def main() -> None:
     p = argparse.ArgumentParser(description="IDW de precipitação com ArcPy")
     p.add_argument("--date", default=DEFAULT_DATE, help="dia, de 2026-01-01 a 2026-08-31")
-    p.add_argument("--power", type=float, default=2)
-    p.add_argument("--cell-size", type=float, default=1000, help="em metros")
-    p.add_argument("--neighbors", type=int, default=12)
+    # Padrões escolhidos por validação cruzada (scripts/otimizar_parametros.py).
+    p.add_argument("--power", type=float, default=DEFAULT_PARAMS["power"])
+    p.add_argument("--cell-size", type=float, default=DEFAULT_PARAMS["cell_size"], help="em metros")
+    p.add_argument("--neighbors", type=int, default=DEFAULT_PARAMS["neighbors"])
     args = p.parse_args()
 
     r = run_idw(args.date, args.power, args.cell_size, args.neighbors)

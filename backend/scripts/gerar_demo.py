@@ -40,9 +40,10 @@ from app import config  # noqa: E402
 
 DESTINO = config.ROOT / "frontend" / "public" / "demo"
 
-# No site estático os parâmetros ficam fixos: 243 dias × uma combinação. Variar
+# No site estático os parâmetros ficam fixos: 243 dias × uma combinação — a
+# escolhida por validação cruzada (scripts/otimizar_parametros.py). Variar
 # potência, resolução e vizinhos é trabalho da API local, com o ArcPy.
-PADRAO = {"power": 2, "cell_size": 1000, "neighbors": 12}
+PADRAO = config.DEFAULT_PARAMS
 CAMPOS_ESTACAO = ("station_id", "name", "municipality", "longitude", "latitude", "precip_mm")
 
 
@@ -129,6 +130,8 @@ def main() -> None:
     (DESTINO / "stations").mkdir(parents=True, exist_ok=True)
     (DESTINO / "idw").mkdir(exist_ok=True)
     (DESTINO / "study_area.geojson").write_bytes(fonte.area())
+    # O estudo que justifica os parâmetros vai junto: a página de método o lê.
+    shutil.copyfile(config.PARAMETERS_JSON, DESTINO / "idw_parameters.json")
 
     lista = fonte.dias()
     dias, inicio = [], time.perf_counter()

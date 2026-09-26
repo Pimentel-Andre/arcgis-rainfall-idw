@@ -67,9 +67,10 @@ function submit() {
       {{ loading ? 'Processando no ArcPy…' : 'Executar IDW' }}
     </button>
     <p v-else class="nota">
-      Site estático: cada dia foi processado com ArcPy usando estes parâmetros
-      e congelado em arquivo. Para variá-los, rode o backend — instruções no
-      README.
+      Valores escolhidos por validação cruzada nos 243 dias, e não por padrão
+      de software — <a href="#metodo">veja o método</a>. Cada dia foi
+      processado com ArcPy usando estes valores. Para testar outros, rode a
+      API local (instruções no README).
     </p>
   </form>
 </template>
@@ -125,6 +126,10 @@ small {
   grid-column: 2;
   font-size: 0.72rem;
   color: var(--tinta-2);
+}
+
+.nota a {
+  color: var(--acento-escuro);
 }
 
 button {

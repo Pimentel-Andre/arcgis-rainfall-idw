@@ -46,6 +46,14 @@ export function sameParams(a, b) {
   return PARAM_KEYS.every((chave) => Number(a[chave]) === Number(b[chave]))
 }
 
+/**
+ * O estudo que escolheu os parâmetros (validação cruzada nos 243 dias). É um
+ * arquivo estático nos dois modos: descreve os dados, não depende da API.
+ */
+export function loadMethod(base = './demo/') {
+  return getJson(`${base}idw_parameters.json`)
+}
+
 /** A API local está no ar? No GitHub Pages a resposta é 404, e cai no modo demo. */
 export async function detectBackend() {
   try {

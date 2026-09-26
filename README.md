@@ -12,7 +12,9 @@ para escolher o dia e os parâmetros e visualizar o resultado.
 **Site:** https://pimentel-andre.github.io/arcgis-rainfall-idw/
 
 - **mapa** da superfície IDW do dia, com as estações e o limite do estado;
-- **parâmetros** configuráveis: potência, resolução e número de vizinhos;
+- **parâmetros escolhidos pelos dados**: potência e vizinhos por validação
+  cruzada nos 243 dias, resolução pela densidade da rede de estações — e uma
+  seção de método no site que mostra como;
 - **validação cruzada** *leave-one-out*: RMSE, MAE e viés, e o erro de cada
   estação no popup e na tabela;
 - **estatísticas** da chuva medida e da superfície, e o **GeoTIFF** para
@@ -87,8 +89,9 @@ só publica o site se tudo passar.
 | script | o que faz |
 |---|---|
 | `preparar_dados.py` | baixa a série do monitor-chuva-rj e o limite do IBGE, e grava `data/` |
+| `otimizar_parametros.py` | escolhe potência, vizinhos e resolução pelos dados (não precisa de ArcPy) |
 | `rodar_idw.py` | roda o IDW de um dia direto no terminal, sem API — a V0.1 do projeto |
-| `gerar_demo.py` | processa os 243 dias e congela as respostas para o site estático |
+| `gerar_demo.py` | processa os 243 dias e congela as respostas para o site estático (`--api` usa uma API no ar) |
 
 O mapa usa o OpenStreetMap em tons de cinza como base. Com uma API key
 gratuita de [developers.arcgis.com](https://developers.arcgis.com) em
@@ -116,6 +119,7 @@ mesmo jeito, `/api/health` diz o motivo e o IDW responde 503.
 | `data/stations.csv` | 187 estações: código, nome, município, coordenadas |
 | `data/precipitation_daily.csv` | 37.691 leituras: chuva de 24 h por estação e dia |
 | `data/study_area.geojson` | limite do estado, IBGE (qualidade máxima, com as ilhas) |
+| `data/idw_parameters.json` | o estudo que escolheu os parâmetros (gerado por `otimizar_parametros.py`) |
 
 A chuva de cada dia é o acumulado da janela de 24 h em UTC, a mesma do
 monitor-chuva-rj. Para rodar o IDW de um dia, o backend junta as duas tabelas
@@ -135,12 +139,13 @@ Duas regras de qualidade vêm do monitor-chuva-rj:
 | parâmetro | padrão | limites | efeito |
 |---|---|---|---|
 | `date` | 2026-01-20 | 2026-01-01 a 2026-08-31 | o dia da chuva |
-| `power` | 2 | 0 < p ≤ 6 | quanto a estação próxima pesa mais que a distante |
-| `cell_size` | 1000 m | 250 a 5000 m | a resolução do raster |
-| `neighbors` | 12 | 3 a 50 | estações usadas em cada célula (raio variável) |
+| `power` | 1,5 | 0 < p ≤ 6 | quanto a estação próxima pesa mais que a distante |
+| `cell_size` | 3000 m | 250 a 5000 m | a resolução do raster |
+| `neighbors` | 25 | 3 a 50 | estações usadas em cada célula (raio variável) |
 
-Os valores são pontos de partida, não verdades: potência maior deixa a
-superfície mais "puxada" por cada estação; mais vizinhos a suavizam.
+Os padrões não são os de fábrica: saem dos dados, como explica a seção
+seguinte. O site público usa exatamente esses valores; a API local aceita
+qualquer combinação dentro dos limites.
 
 | rota | resposta |
 |---|---|
@@ -152,8 +157,47 @@ superfície mais "puxada" por cada estação; mais vizinhos a suavizam.
 | `GET /outputs/<rodada>/...` | o GeoTIFF, o PNG, o CSV de entrada e o JSON de cada rodada |
 
 ```json
-{ "date": "2026-01-20", "power": 2, "cell_size": 1000, "neighbors": 12 }
+{ "date": "2026-01-20", "power": 1.5, "cell_size": 3000, "neighbors": 25 }
 ```
+
+## Como os parâmetros foram escolhidos
+
+A própria documentação do ArcGIS lembra que a potência 2, padrão da
+ferramenta, não tem justificativa teórica, e recomenda examinar a validação
+cruzada. Na literatura de chuva, a potência ótima varia de 0 a 5 conforme a
+rede (Chen & Liu, 2012). Então o projeto escolhe pelos próprios dados
+(`backend/scripts/otimizar_parametros.py`):
+
+**Potência e vizinhos: validação cruzada nos 243 dias.** Para cada uma das
+72 combinações (potência de 0,5 a 4; de 4 a 30 vizinhos), cada estação de
+cada dia é estimada sem ela mesma — 37.691 estimativas por combinação. Vence
+o menor RMSE agregado. O RMSE pune mais os erros grandes, que são os que
+importam em chuva forte.
+
+| | RMSE | MAE | viés |
+|---|---|---|---|
+| **escolha: potência 1,5, 25 vizinhos** | **7,32 mm** | 2,62 mm | +0,03 mm |
+| clássico da literatura: potência 2, 12 vizinhos | 7,43 mm | — | — |
+| média simples das estações do dia, sem interpolar | 8,79 mm | — | — |
+
+O IDW ajustado elimina 31% do erro quadrático da média simples. A escolha é
+estável: em seis dos oito meses a melhor potência do mês também é 1,5, e em
+nenhum mês a escolha global fica mais de 2,3% atrás da melhor daquele mês. O
+vale do erro é raso — com potência 1,5, qualquer número de vizinhos entre 8
+e 30 fica a menos de 1% do melhor —, então a conclusão não depende de um
+ajuste fino.
+
+**Resolução: a densidade da rede.** Hengl (2006) mostra que, para dados de
+ponto, a célula deve ter no máximo metade da distância média entre cada
+ponto e o vizinho mais próximo; mais fina que isso, o raster mostra detalhe
+que a amostragem não mede. Aqui essa distância é de 6,9 km (mediana dos 243
+dias), o que limita a célula a 3,45 km: a escolha é 3 km. Para pontos
+espalhados ao acaso, a mesma regra daria 4,3 km (Clark & Evans, 1954); a rede
+real é mais agrupada (R = 0,80), com mais estações na região metropolitana.
+
+O resultado fica em `data/idw_parameters.json`, que a API, o gerador do site e
+a página de método leem. Com meses novos no arquivo, basta rodar o script de
+novo.
 
 ## O processamento com ArcPy
 
@@ -174,18 +218,19 @@ Uma função por etapa, na ordem em que se faria à mão no ArcGIS Pro
 dela com as demais, e a estimativa é comparada com o que ela mediu. Repetido
 para todas:
 
-| | 20/01/2026, parâmetros padrão |
-|---|---|
-| RMSE | 37,9 mm |
-| MAE | 26,3 mm |
-| Viés | +0,8 mm |
+| | 20/01/2026 | 243 dias |
+|---|---|---|
+| RMSE | 36,7 mm | 7,3 mm |
+| MAE | 26,8 mm | 2,6 mm |
+| Viés | +1,7 mm | +0,03 mm |
 
-O erro é grande porque a chuva de verão no RJ é convectiva: tempestades de
-poucos quilômetros entre estações que distam mais que isso. E o IDW nunca
-passa do maior valor medido ao redor, então os picos são os mais
+O erro de 20/01 é grande porque a chuva de verão no RJ é convectiva:
+tempestades de poucos quilômetros entre estações que distam mais que isso. E
+o IDW nunca passa do maior valor medido ao redor, então os picos são os mais
 subestimados — Independência 2, em Petrópolis, mediu 182,8 mm, e sem ela o
-IDW estimaria 72,5 mm ali. É esse tipo de leitura que a validação existe
-para mostrar.
+IDW estimaria 68,9 mm ali. No arquivo inteiro o erro é bem menor, porque a
+maior parte dos dias tem pouca chuva. É esse tipo de leitura que a validação
+existe para mostrar, e o site a traz dia a dia.
 
 ## Decisões técnicas
 
@@ -251,7 +296,10 @@ fila, e acha a estação pelo código — não pela posição na lista.
 - O "olho-de-boi" em volta das estações isoladas é característico do método,
   mais forte com potências altas.
 - As classes são ilustrativas, pensadas para chuva de 24 h.
-- No site estático os parâmetros ficam fixos; variá-los exige a API local.
+- No site estático os parâmetros ficam fixos nos valores escolhidos por
+  validação cruzada; variá-los exige a API local.
+- A validação leave-one-out mede o erro nas estações. Longe delas, onde não
+  há o que comparar, o erro tende a ser maior.
 
 ## Próximos passos
 
@@ -284,6 +332,24 @@ frontend/
 data/                          estações, chuva diária e área de estudo
 outputs/                       rodadas da API (não versionado)
 ```
+
+## Referências
+
+- Chen, F.-W.; Liu, C.-W. (2012). Estimation of the spatial rainfall
+  distribution using inverse distance weighting (IDW) in the middle of Taiwan.
+  *Paddy and Water Environment*, 10, 209–222. doi:10.1007/s10333-012-0319-1
+- Clark, P. J.; Evans, F. C. (1954). Distance to nearest neighbor as a measure
+  of spatial relationships in populations. *Ecology*, 35(4), 445–453.
+- Esri. *How inverse distance weighted interpolation works*. Documentação do
+  ArcGIS Pro.
+- Hengl, T. (2006). Finding the right pixel size. *Computers & Geosciences*,
+  32(9), 1283–1298. doi:10.1016/j.cageo.2005.11.008
+- Li, J.; Heap, A. D. (2014). Spatial interpolation methods applied in the
+  environmental sciences: A review. *Environmental Modelling & Software*, 53,
+  173–189.
+- Shepard, D. (1968). A two-dimensional interpolation function for
+  irregularly-spaced data. *Proceedings of the 23rd ACM National Conference*,
+  517–524.
 
 ## Autor
 

@@ -215,9 +215,9 @@ def read_points(points_fc: str, value_field: str):
 
 def run_idw(
     date: str = config.DEFAULT_DATE,
-    power: float = 2,
-    cell_size: float = 1000,
-    neighbors: int = 12,
+    power: float = config.DEFAULT_PARAMS["power"],
+    cell_size: float = config.DEFAULT_PARAMS["cell_size"],
+    neighbors: int = config.DEFAULT_PARAMS["neighbors"],
     study_area: Path | None = None,
     outputs_dir: Path | None = None,
 ) -> dict:

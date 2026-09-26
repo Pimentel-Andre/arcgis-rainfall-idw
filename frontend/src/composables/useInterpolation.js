@@ -1,7 +1,11 @@
 import { computed, reactive, ref, shallowRef } from 'vue'
 
-import { createApiSource, createDemoSource, detectBackend } from '../services/idwApi.js'
+import {
+  createApiSource, createDemoSource, detectBackend, loadMethod,
+} from '../services/idwApi.js'
 
+// Só um ponto de partida: os valores de verdade vêm do estudo de validação
+// cruzada (idw_parameters.json) assim que ele carrega.
 export const DEFAULT_PARAMS = { power: 2, cell_size: 1000, neighbors: 12 }
 
 /**
@@ -25,6 +29,7 @@ export function useInterpolation() {
   const legend = shallowRef([])
   const stations = shallowRef([])
   const result = shallowRef(null)
+  const method = shallowRef(null)
   const params = reactive({ ...DEFAULT_PARAMS })
 
   const mode = computed(() => source.value?.mode ?? null)
@@ -90,6 +95,12 @@ export function useInterpolation() {
             + 'qualquer parâmetro. Enquanto isso, o mapa mostra resultados já processados.'
         }
       }
+      // O estudo é opcional: sem ele, o mapa funciona com os valores clássicos.
+      method.value = await loadMethod().catch(() => null)
+      if (method.value) {
+        const { power, cell_size: cellSize, neighbors } = method.value.chosen
+        Object.assign(params, { power, cell_size: cellSize, neighbors })
+      }
       // No site estático os parâmetros são os dos arquivos pré-processados.
       if (source.value.fixedParams) Object.assign(params, source.value.fixedParams)
 
@@ -106,7 +117,7 @@ export function useInterpolation() {
   return {
     source, mode, notice, error, booting, loading,
     dates, date, dataset, legend, stations, stationRows, stationCount,
-    result: currentResult, params,
+    result: currentResult, params, method,
     start, selectDate, runInterpolation,
   }
 }
